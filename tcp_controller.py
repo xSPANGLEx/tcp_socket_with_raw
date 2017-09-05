@@ -52,7 +52,10 @@ class TcpController:
     def checksum(self, msg):
         s = 0
         for i in range(0, len(msg), 2):
-            w = (msg[i] << 8) + (msg[i+1])
+            try:
+                w = (msg[i] << 8) + (msg[i+1])
+            except:
+                w = (msg[i] << 8) + 0
             s = s + w
         s = (s>>16) + (s & 0xffff);
         s = ~s & 0xffff
@@ -75,13 +78,20 @@ class TcpController:
             source_port = int.from_bytes(bytes(response[20:22]), "big")
             dest_port = int.from_bytes(bytes(response[22:24]), "big")
             service_ident = self.get_service_ident(response_raw)
-            if dest_addr == self.from_dest_addr and dest_port == self.from_dest_port:
+            if self.from_src_port == 0:
+                if dest_addr == self.from_dest_addr and dest_port == self.from_dest_port:
+                    if service_ident in self.packet_ident:
+                        continue
+                    else:
+                        self.packet_ident[service_ident] = self.global_counter
+                    self.from_src_port = source_port
+                    self.global_counter += 1
+                    self.src_packet.append(response)
+            elif dest_addr == self.from_dest_addr and dest_port == self.from_dest_port:
                 if service_ident in self.packet_ident:
                     continue
                 else:
                     self.packet_ident[service_ident] = self.global_counter
-                if self.from_src_port == 0:
-                    self.from_src_port = source_port
                 self.global_counter += 1
                 self.src_packet.append(response)
             if src_addr == self.to_dest_addr and source_port == self.to_dest_port:
@@ -102,10 +112,10 @@ class TcpController:
         protocol = socket.IPPROTO_TCP
         packet[36:38] = [b for b in list(pack("!H", 0))]
         total_length = int.from_bytes(bytes(packet[2:4]), "big")
-        tcp_header = bytes(packet[20:total_length])
-        tcp_length = len(tcp_header)
         src_addr = bytes(packet[12:16])
         dest_addr = bytes(packet[16:20])
+        tcp_header = bytes(packet[20:total_length])
+        tcp_length = len(tcp_header)
         psh = pack("!4s4sBBH", src_addr, dest_addr, placeholder, protocol, tcp_length)
         psh = psh + tcp_header
         checksum = self.checksum(psh)
@@ -197,7 +207,7 @@ class TcpController:
 if __name__ == "__main__":
     tcp = TcpController()
     tcp.set_from_host(("127.0.0.1", 0),("127.0.0.1", 18080))
-    tcp.set_to_host(("127.0.0.1", random.randint(49152, 65535)), ("127.0.0.1", 8080))
+    tcp.set_to_host(("127.0.0.1", random.randint(49152, 65535)), ("127.0.0.1", 3306))
     tcp.recv()
     while 1:
         key = input()
