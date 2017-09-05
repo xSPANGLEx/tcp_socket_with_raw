@@ -4,6 +4,7 @@ import random
 import time
 import logging
 import threading
+import argparse
 from struct import *
 
 
@@ -124,17 +125,17 @@ class TcpController:
 
 
     def send_to(self, packet):
-        packet[12] = self.to_dest_addr[0]
-        packet[13] = self.to_dest_addr[1]
-        packet[14] = self.to_dest_addr[2]
-        packet[15] = self.to_dest_addr[3]
+        packet[12] = self.to_src_addr[0]
+        packet[13] = self.to_src_addr[1]
+        packet[14] = self.to_src_addr[2]
+        packet[15] = self.to_src_addr[3]
         port_binary = [b for b in list(pack(">H", self.to_src_port))]
         packet[20] = port_binary[0]
         packet[21] = port_binary[1]
-        packet[16] = self.to_src_addr[0]
-        packet[17] = self.to_src_addr[1]
-        packet[18] = self.to_src_addr[2]
-        packet[19] = self.to_src_addr[3]
+        packet[16] = self.to_dest_addr[0]
+        packet[17] = self.to_dest_addr[1]
+        packet[18] = self.to_dest_addr[2]
+        packet[19] = self.to_dest_addr[3]
         port_binary = [b for b in list(pack(">H", self.to_dest_port))]
         packet[22] = port_binary[0]
         packet[23] = port_binary[1]
@@ -205,9 +206,21 @@ class TcpController:
             print(" :" + str(self.packet_ident[self.get_service_ident(packet)]))
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="TCP Controller")
+    parser.add_argument("src", help="Source host:port", type=str)
+    parser.add_argument("dest", help="Dest host:port", type=str)
+    args = parser.parse_args()
+    try:
+        source_host = args.src.split(":")[0]
+        source_port = int(args.src.split(":")[1])
+        dest_host = args.dest.split(":")[0]
+        dest_port = int(args.dest.split(":")[1])
+    except:
+        print("Args error")
+        sys.exit(1)
     tcp = TcpController()
-    tcp.set_from_host(("127.0.0.1", 0),("127.0.0.1", 18080))
-    tcp.set_to_host(("127.0.0.1", random.randint(49152, 65535)), ("127.0.0.1", 3306))
+    tcp.set_from_host((source_host, 0),(source_host, source_port))
+    tcp.set_to_host((source_host, random.randint(49152, 65535)), (dest_host, dest_port))
     tcp.recv()
     while 1:
         key = input()
