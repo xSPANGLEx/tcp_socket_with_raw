@@ -240,6 +240,10 @@ class TcpController:
         while 1:
             if self.mode_status == "manual":
                 break
+            for i in range(len(self.src_packet)):
+                self.send_to(self.src_packet.pop(0))
+            for i in range(len(self.dest_packet)):
+                self.send_from(self.dest_packet.pop(0))
 
     def auto_mode(self):
         self.mode_status = "auto"
