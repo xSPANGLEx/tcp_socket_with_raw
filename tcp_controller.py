@@ -33,6 +33,7 @@ class TcpController:
         self.src_packet = []
         self.packet_ident = {}
         self.global_counter = 0
+        self.mode_status = "manual"
 
     def set_from_host(self, src, dest):
         self.from_dest_ip = dest[0]
@@ -205,6 +206,51 @@ class TcpController:
                 print(flag_name, end=" ")
             print(" :" + str(self.packet_ident[self.get_service_ident(packet)]))
 
+    def manual_mode(self):
+        self.mode_status = "manual"
+        while 1:
+            key = input()
+            keys = key.split(" ")
+            if key == "auto":
+                break
+            if key == "exit":
+                self.mode_status = "exit"
+                return
+            if key == "print":
+                self.print()
+            if key == "send_to":
+                self.send_to(self.src_packet.pop(0))
+            if key == "send_from":
+                self.send_from(self.dest_packet.pop(0))
+            if key == "drop_to":
+                self.src_packet.pop(0)
+            if key == "drop_from":
+                self.dest_packet.pop(0)
+            if len(keys) > 1:
+                if keys[0] == "send":
+                    packet, target = self.send_ident(int(keys[1]))
+                    if target == "to":
+                        self.send_to(packet)
+                    if target == "from":
+                        self.send_from(packet)
+                if keys[0] == "drop":
+                    packet, target = sefl.send_ident(int(keys[1]))
+
+    def auto_transfer(self):
+        while 1:
+            if self.mode_status == "manual":
+                break
+
+    def auto_mode(self):
+        self.mode_status = "auto"
+        th = threading.Thread(target=self.auto_transfer)
+        th.setDaemon(True)
+        th.start()
+        while 1:
+            key = input()
+            if key == "manual":
+                break         
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TCP Controller")
     parser.add_argument("src", help="Source host:port", type=str)
@@ -223,24 +269,7 @@ if __name__ == "__main__":
     tcp.set_to_host((source_host, random.randint(49152, 65535)), (dest_host, dest_port))
     tcp.recv()
     while 1:
-        key = input()
-        keys = key.split(" ")
-        if key == "print":
-            tcp.print()
-        if key == "send_to":
-            tcp.send_to(tcp.src_packet.pop(0))
-        if key == "send_from":
-            tcp.send_from(tcp.dest_packet.pop(0))
-        if key == "drop_to":
-            tcp.src_packet.pop(0)
-        if key == "drop_from":
-            tcp.dest_packet.pop(0)
-        if len(keys) > 1:
-            if keys[0] == "send":
-                packet, target = tcp.send_ident(int(keys[1]))
-                if target == "to":
-                    tcp.send_to(packet)
-                if target == "from":
-                    tcp.send_from(packet)
-            if keys[0] == "drop":
-                packet, target = tcp.send_ident(int(keys[1]))
+        tcp.manual_mode()
+        if tcp.mode_status == "exit":
+            break
+        tcp.auto_mode()
