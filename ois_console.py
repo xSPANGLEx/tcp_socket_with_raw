@@ -115,10 +115,20 @@ class Screen:
         result = []
         input_count = 0
         while 1:
-            char = self.input_scr.getch()
-            char = chr(char)
+            char_row = self.input_scr.getch()
+            char = chr(char_row)
             if char == "\n":
                 break
+            if char_row == curses.KEY_BACKSPACE or char_row == 127:
+                if input_count != 0:
+                    input_count -= 1
+                    self.input_scr.addch(0, input_count, " ")
+                    self.input_scr.move(0, input_count)
+                    self.input_scr.refresh(0, 0, self.term_height-1, 0, self.term_height-1, self.term_width-1)
+                    result.pop()
+                    continue
+                else:
+                    continue
             self.input_scr.addch(0, input_count, char)
             self.input_scr.refresh(0, 0, self.term_height-1, 0, self.term_height-1, self.term_width-1)
             result.append(char)
