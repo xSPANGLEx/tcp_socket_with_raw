@@ -4,6 +4,7 @@ import random
 import threading
 import argparse
 from struct import pack
+import ois_console
 
 
 class TcpController:
@@ -13,8 +14,9 @@ class TcpController:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
             self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
         except Exception as e:
-            print("Socket initialize error. [%s]" % e)
+            print("Socket initialize error. [%s]" % str(e))
             sys.exit(1)
+        self.screen = ois_console.Screen(2)
         self.from_dest_ip = None
         self.from_src_ip = None
         self.from_dest_addr = None
@@ -72,6 +74,7 @@ class TcpController:
     def reciever(self):
         while 1:
             response_raw = self.socket.recv(65000)
+            self.print()
             response = [b for b in list(response_raw)]
             src_addr = bytes(response[12:16])
             dest_addr = bytes(response[16:20])
@@ -188,31 +191,38 @@ class TcpController:
         return None, None
 
     def print(self):
-        print("[Dest] " + "[src:" + str(self.to_src_port) + "] [dest:" + str(self.to_dest_port) + "]")
+        self.screen.clear(screen=0)
+        self.screen.clear(screen=1)
+        output = "Source [%s:%s] to [%s:%s]\n\n" % (self.from_src_ip, self.from_src_port,
+                                                    self.from_dest_ip, self.from_dest_port)
+        self.screen.print(output.encode("utf-8"), screen=0)
         for packet in self.dest_packet:
             flag = list(format(packet[33], "08b"))[2:]
             for flag_name in self.check_tcp_flags(flag):
-                print(flag_name, end=" ")
-            print(" :" + str(self.packet_ident[self.get_service_ident(packet)]))
-        print("[Source]" + "[src:" + str(self.from_src_port) + "] [dest:" + str(self.from_dest_port) + "]")
+                self.screen.print(flag_name.encode("utf-8"), screen=1)
+            output = " :" + str(self.packet_ident[self.get_service_ident(packet)]) + "\n"
+            self.screen.print(output.encode("utf-8"), screen=1)
+        output = "Dest [%s:%s] to [%s:%s]\n\n" % (self.to_src_ip, self.to_src_port,
+                                                  self.to_dest_ip, self.to_dest_port)
+        self.screen.print(output.encode("utf-8"), screen=1)
         for packet in self.src_packet:
             flag = list(format(packet[33], "08b"))[2:]
             for flag_name in self.check_tcp_flags(flag):
-                print(flag_name, end=" ")
-            print(" :" + str(self.packet_ident[self.get_service_ident(packet)]))
+                self.screen.print(flag_name.encode("utf-8"), screen=0)
+            output = " :" + str(self.packet_ident[self.get_service_ident(packet)]) + "\n"
+            self.screen.print(output.encode("utf-8"), screen=0)
 
     def manual_mode(self):
         self.mode_status = "manual"
         while 1:
-            key = input()
+            key = self.screen.input()
             keys = key.split(" ")
             if key == "auto":
                 break
             if key == "exit":
                 self.mode_status = "exit"
+                self.screen.screen_finalize()
                 return
-            if key == "print":
-                self.print()
             if key == "send_to":
                 self.send_to(self.src_packet.pop(0))
             if key == "send_from":
@@ -246,7 +256,7 @@ class TcpController:
         th.setDaemon(True)
         th.start()
         while 1:
-            key = input()
+            key = self.screen.input()
             if key == "manual":
                 break
 
@@ -268,6 +278,7 @@ if __name__ == "__main__":
     tcp.set_from_host((source_host, 0), (source_host, source_port))
     tcp.set_to_host((source_host, random.randint(49152, 65535)), (dest_host, dest_port))
     tcp.recv()
+    tcp.print()
     while 1:
         tcp.manual_mode()
         if tcp.mode_status == "exit":
