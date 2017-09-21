@@ -1,11 +1,9 @@
 import socket
 import sys
 import random
-import time
-import logging
 import threading
 import argparse
-from struct import *
+from struct import pack
 
 
 class TcpController:
@@ -13,7 +11,7 @@ class TcpController:
     def __init__(self):
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
-            self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL,1)
+            self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
         except Exception as e:
             print("Socket initialize error. [%s]" % e)
             sys.exit(1)
@@ -24,7 +22,7 @@ class TcpController:
         self.from_dest_port = None
         self.from_src_port = None
         self.to_dest_ip = None
-        self.to_src_ip = None 
+        self.to_src_ip = None
         self.to_dest_addr = None
         self.to_src_addr = None
         self.to_dest_port = None
@@ -59,9 +57,9 @@ class TcpController:
             except:
                 w = (msg[i] << 8) + 0
             s = s + w
-        s = (s>>16) + (s & 0xffff);
+        s = (s >> 16) + (s & 0xffff)
         s = ~s & 0xffff
-        return s 
+        return s
 
     def get_service_ident(self, packet):
         packet = [b for b in list(packet)]
@@ -103,7 +101,7 @@ class TcpController:
                     self.packet_ident[service_ident] = self.global_counter
                 self.global_counter += 1
                 self.dest_packet.append(response)
-               
+
     def recv(self):
         th = threading.Thread(target=self.reciever)
         th.setDaemon(True)
@@ -124,7 +122,6 @@ class TcpController:
         packet[36:38] = [b for b in list(pack("!H", checksum))]
         return packet
 
-
     def send_to(self, packet):
         packet[12] = self.to_src_addr[0]
         packet[13] = self.to_src_addr[1]
@@ -141,8 +138,7 @@ class TcpController:
         packet[22] = port_binary[0]
         packet[23] = port_binary[1]
         packet = self.re_checksum(packet)
-        self.socket.sendto(bytes(packet), (self.to_dest_ip,0))
-        
+        self.socket.sendto(bytes(packet), (self.to_dest_ip, 0))
 
     def send_from(self, packet):
         packet[12] = self.from_dest_addr[0]
@@ -160,7 +156,7 @@ class TcpController:
         packet[22] = port_binary[0]
         packet[23] = port_binary[1]
         packet = self.re_checksum(packet)
-        self.socket.sendto(bytes(packet), (self.from_dest_ip,0))
+        self.socket.sendto(bytes(packet), (self.from_dest_ip, 0))
 
     def check_tcp_flags(self, flag):
         result = []
@@ -190,7 +186,6 @@ class TcpController:
             if self.packet_ident[service_ident] == ident:
                 return self.src_packet.pop(i), "to"
         return None, None
-
 
     def print(self):
         print("[Dest] " + "[src:" + str(self.to_src_port) + "] [dest:" + str(self.to_dest_port) + "]")
@@ -234,7 +229,7 @@ class TcpController:
                     if target == "from":
                         self.send_from(packet)
                 if keys[0] == "drop":
-                    packet, target = sefl.send_ident(int(keys[1]))
+                    packet, target = self.send_ident(int(keys[1]))
 
     def auto_transfer(self):
         while 1:
@@ -253,7 +248,8 @@ class TcpController:
         while 1:
             key = input()
             if key == "manual":
-                break         
+                break
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TCP Controller")
@@ -269,7 +265,7 @@ if __name__ == "__main__":
         print("Args error")
         sys.exit(1)
     tcp = TcpController()
-    tcp.set_from_host((source_host, 0),(source_host, source_port))
+    tcp.set_from_host((source_host, 0), (source_host, source_port))
     tcp.set_to_host((source_host, random.randint(49152, 65535)), (dest_host, dest_port))
     tcp.recv()
     while 1:
