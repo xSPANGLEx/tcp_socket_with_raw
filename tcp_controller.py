@@ -34,6 +34,7 @@ class TcpController:
         self.packet_ident = {}
         self.global_counter = 0
         self.mode_status = "manual"
+        self.print_counter = 0
 
     def set_from_host(self, src, dest):
         self.from_dest_ip = dest[0]
@@ -74,7 +75,6 @@ class TcpController:
     def reciever(self):
         while 1:
             response_raw = self.socket.recv(65000)
-            self.print()
             response = [b for b in list(response_raw)]
             src_addr = bytes(response[12:16])
             dest_addr = bytes(response[16:20])
@@ -90,6 +90,7 @@ class TcpController:
                     self.from_src_port = source_port
                     self.global_counter += 1
                     self.src_packet.append(response)
+                    self.print()
             elif dest_addr == self.from_dest_addr and dest_port == self.from_dest_port:
                 if service_ident in self.packet_ident:
                     continue
@@ -97,6 +98,7 @@ class TcpController:
                     self.packet_ident[service_ident] = self.global_counter
                 self.global_counter += 1
                 self.src_packet.append(response)
+                self.print()
             if src_addr == self.to_dest_addr and source_port == self.to_dest_port:
                 if service_ident in self.packet_ident:
                     continue
@@ -104,6 +106,7 @@ class TcpController:
                     self.packet_ident[service_ident] = self.global_counter
                 self.global_counter += 1
                 self.dest_packet.append(response)
+                self.print()
 
     def recv(self):
         th = threading.Thread(target=self.reciever)
@@ -199,18 +202,18 @@ class TcpController:
         for packet in self.dest_packet:
             flag = list(format(packet[33], "08b"))[2:]
             for flag_name in self.check_tcp_flags(flag):
-                self.screen.print(flag_name.encode("utf-8"), screen=1)
+                self.screen.print(flag_name.encode("utf-8"), screen=0)
             output = " :" + str(self.packet_ident[self.get_service_ident(packet)]) + "\n"
-            self.screen.print(output.encode("utf-8"), screen=1)
+            self.screen.print(output.encode("utf-8"), screen=0)
         output = "Dest [%s:%s] to [%s:%s]\n\n" % (self.to_src_ip, self.to_src_port,
                                                   self.to_dest_ip, self.to_dest_port)
         self.screen.print(output.encode("utf-8"), screen=1)
         for packet in self.src_packet:
             flag = list(format(packet[33], "08b"))[2:]
             for flag_name in self.check_tcp_flags(flag):
-                self.screen.print(flag_name.encode("utf-8"), screen=0)
+                self.screen.print(flag_name.encode("utf-8"), screen=1)
             output = " :" + str(self.packet_ident[self.get_service_ident(packet)]) + "\n"
-            self.screen.print(output.encode("utf-8"), screen=0)
+            self.screen.print(output.encode("utf-8"), screen=1)
 
     def manual_mode(self):
         self.mode_status = "manual"
@@ -225,12 +228,16 @@ class TcpController:
                 return
             if key == "send_to":
                 self.send_to(self.src_packet.pop(0))
+                self.print()
             if key == "send_from":
                 self.send_from(self.dest_packet.pop(0))
+                self.print()
             if key == "drop_to":
                 self.src_packet.pop(0)
+                self.print()
             if key == "drop_from":
                 self.dest_packet.pop(0)
+                self.print()
             if len(keys) > 1:
                 if keys[0] == "send":
                     packet, target = self.send_ident(int(keys[1]))
@@ -238,8 +245,10 @@ class TcpController:
                         self.send_to(packet)
                     if target == "from":
                         self.send_from(packet)
+                    self.print()
                 if keys[0] == "drop":
                     packet, target = self.send_ident(int(keys[1]))
+                    self.print()
 
     def auto_transfer(self):
         while 1:
