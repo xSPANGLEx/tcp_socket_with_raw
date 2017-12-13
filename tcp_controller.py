@@ -91,7 +91,8 @@ class TcpController:
                     self.global_counter += 1
                     self.src_packet.append(response)
                     self.print()
-            elif dest_addr == self.from_dest_addr and dest_port == self.from_dest_port:
+            elif (dest_port == self.from_dest_port and source_port == self.from_src_port) \
+                    or (dest_port == self.from_src_port and source_port == self.from_dest_port):
                 if service_ident in self.packet_ident:
                     continue
                 else:
@@ -99,7 +100,8 @@ class TcpController:
                 self.global_counter += 1
                 self.src_packet.append(response)
                 self.print()
-            if src_addr == self.to_dest_addr and source_port == self.to_dest_port:
+            elif (source_port == self.to_src_port and dest_port == self.to_dest_port) \
+                    or (source_port == self.to_dest_port and dest_port == self.to_src_port):
                 if service_ident in self.packet_ident:
                     continue
                 else:
