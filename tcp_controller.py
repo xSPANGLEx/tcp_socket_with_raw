@@ -86,10 +86,6 @@ class TcpController:
             source_port = int.from_bytes(bytes(response[20:22]), "big")
             dest_port = int.from_bytes(bytes(response[22:24]), "big")
             service_ident = self.get_service_ident(response_raw)
-            if dest_addr not in self.controll_addrs:
-                continue
-            if src_addr not in self.controll_addrs:
-                continue
             if self.from_src_port == 0:
                 if dest_addr == self.from_dest_addr and dest_port == self.from_dest_port:
                     if service_ident in self.packet_ident:
@@ -97,10 +93,18 @@ class TcpController:
                     else:
                         self.packet_ident[service_ident] = self.global_counter
                     self.from_src_port = source_port
+                    self.from_src_addr = src_addr
+                    self.from_src_ip = socket.inet_ntoa(src_addr)
+                    self.controll_addrs.append(src_addr)
                     self.global_counter += 1
                     self.src_packet.append(response)
                     self.print()
-            elif (dest_port == self.from_dest_port and source_port == self.from_src_port):
+                continue
+            if dest_addr not in self.controll_addrs:
+                continue
+            if src_addr not in self.controll_addrs:
+                continue
+            if (dest_port == self.from_dest_port and source_port == self.from_src_port):
                 if service_ident in self.packet_ident:
                     continue
                 else:
@@ -171,7 +175,7 @@ class TcpController:
         packet[22] = port_binary[0]
         packet[23] = port_binary[1]
         packet = self.re_checksum(packet)
-        self.socket.sendto(bytes(packet), (self.from_dest_ip, 0))
+        self.socket.sendto(bytes(packet), (self.from_src_ip, 0))
 
     def check_tcp_flags(self, flag):
         result = []
@@ -297,7 +301,7 @@ if __name__ == "__main__":
         print("Args error")
         sys.exit(1)
     tcp = TcpController()
-    tcp.set_from_host((source_host, 0), (source_host, source_port))
+    tcp.set_from_host(("0.0.0.0", 0), (source_host, source_port))
     tcp.set_to_host((source_host, random.randint(49152, 65535)), (dest_host, dest_port))
     tcp.recv()
     tcp.print()
