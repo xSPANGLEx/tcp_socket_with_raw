@@ -17,6 +17,7 @@ class TcpController:
             print("Socket initialize error. [%s]" % str(e))
             sys.exit(1)
         self.screen = ois_console.Screen(2)
+        self.controll_addrs = []
         self.from_dest_ip = None
         self.from_src_ip = None
         self.from_dest_addr = None
@@ -43,6 +44,8 @@ class TcpController:
         self.from_src_addr = socket.inet_aton(self.from_src_ip)
         self.from_dest_port = dest[1]
         self.from_src_port = src[1]
+        self.controll_addrs.append(self.from_dest_addr)
+        self.controll_addrs.append(self.from_src_addr)
 
     def set_to_host(self, src, dest):
         self.to_dest_ip = dest[0]
@@ -51,6 +54,8 @@ class TcpController:
         self.to_src_addr = socket.inet_aton(self.to_src_ip)
         self.to_dest_port = dest[1]
         self.to_src_port = src[1]
+        self.controll_addrs.append(self.to_dest_addr)
+        self.controll_addrs.append(self.to_src_addr)
 
     def checksum(self, msg):
         s = 0
@@ -81,6 +86,10 @@ class TcpController:
             source_port = int.from_bytes(bytes(response[20:22]), "big")
             dest_port = int.from_bytes(bytes(response[22:24]), "big")
             service_ident = self.get_service_ident(response_raw)
+            if dest_addr not in self.controll_addrs:
+                continue
+            if src_addr not in self.controll_addrs:
+                continue
             if self.from_src_port == 0:
                 if dest_addr == self.from_dest_addr and dest_port == self.from_dest_port:
                     if service_ident in self.packet_ident:
@@ -91,8 +100,7 @@ class TcpController:
                     self.global_counter += 1
                     self.src_packet.append(response)
                     self.print()
-            elif (dest_port == self.from_dest_port and source_port == self.from_src_port) \
-                    or (dest_port == self.from_src_port and source_port == self.from_dest_port):
+            elif (dest_port == self.from_dest_port and source_port == self.from_src_port):
                 if service_ident in self.packet_ident:
                     continue
                 else:
@@ -100,8 +108,7 @@ class TcpController:
                 self.global_counter += 1
                 self.src_packet.append(response)
                 self.print()
-            elif (source_port == self.to_src_port and dest_port == self.to_dest_port) \
-                    or (source_port == self.to_dest_port and dest_port == self.to_src_port):
+            elif (source_port == self.to_dest_port and dest_port == self.to_src_port):
                 if service_ident in self.packet_ident:
                     continue
                 else:
@@ -241,6 +248,10 @@ class TcpController:
                 self.dest_packet.pop(0)
                 self.print()
             if len(keys) > 1:
+                try:
+                    int(keys[1])
+                except:
+                    continue
                 if keys[0] == "send":
                     packet, target = self.send_ident(int(keys[1]))
                     if target == "to":
